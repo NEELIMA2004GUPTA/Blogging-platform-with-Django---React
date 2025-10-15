@@ -174,6 +174,7 @@ class SerializerTests(TestCase):
         self.assertEqual(serializer.data['category']['name'], "Tech")
 
     def test_blog_serializer_create(self):
+        Category.objects.create(name="Science")  # ensure category exists
         data = {
             "title": "New Blog",
             "content": "New Content",
@@ -185,6 +186,7 @@ class SerializerTests(TestCase):
         self.assertEqual(blog.category.name, "Science")
 
     def test_blog_serializer_update(self):
+        Category.objects.create(name="UpdatedCat")  # ensure category exists
         data = {"title": "Updated Blog", "category_name": "UpdatedCat"}
         serializer = BlogSerializer(instance=self.blog, data=data, partial=True)
         self.assertTrue(serializer.is_valid(), serializer.errors)

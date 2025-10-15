@@ -94,37 +94,35 @@ class BlogStatsSerializer(serializers.ModelSerializer):
         model = BlogStats
         fields = ['views', 'likes', 'shares']
 
-# ! Blog serializer
+# ! Blog Serializer
 
 class BlogSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
-    # For output
     category = CategorySerializer(read_only=True)
-    # For input
     category_name = serializers.CharField(write_only=True)
-
-    comments = CommentSerializer(many=True, read_only=True)
-    
 
     class Meta:
         model = Blog
-        fields = [
-            'id', 'title', 'content', 'author', 'category', 'category_name', 'image',
-            'created_at', 'updated_at', 'is_published', 'publish_at',
-            'deleted_at', 'comments'
-        ]
-        read_only_fields = ['author', 'created_at', 'updated_at', 'deleted_at', 'comments']
+        fields = ['id', 'title', 'content', 'author', 'category', 'category_name']
+        read_only_fields = ['author', 'category']
+
+    def validate_category_name(self, value):
+        try:
+            category = Category.objects.get(name=value)
+        except Category.DoesNotExist:
+            raise serializers.ValidationError("Category does not exist. Only admins can create new categories.")
+        return value
 
     def create(self, validated_data):
         category_name = validated_data.pop('category_name')
-        category, _ = Category.objects.get_or_create(name=category_name)
+        category = Category.objects.get(name=category_name)
         blog = Blog.objects.create(category=category, **validated_data)
         return blog
 
     def update(self, instance, validated_data):
         category_name = validated_data.pop('category_name', None)
         if category_name:
-            category, _ = Category.objects.get_or_create(name=category_name)
+            category = Category.objects.get(name=category_name)
             instance.category = category
 
         for attr, value in validated_data.items():

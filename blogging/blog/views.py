@@ -19,7 +19,9 @@ from .models import User, Blog , Category, Comment, BlogStats
 from django.db.models import Sum
 
 from .serializers import RegisterSerializer, UserSerializer,PasswordResetSerializer, PasswordResetConfirmSerializer, BlogSerializer, CategorySerializer, CommentSerializer, BlogStatsSerializer,MyTokenObtainPairSerializer
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
 
 # ! Register
 
@@ -351,24 +353,54 @@ def blog_share(request, blog_id):
 @permission_classes([IsAuthenticated])
 def admin_stats(request):
     # Only admin users can access
-    if not request.user.is_admin:
+    if not request.user.is_staff:  
         return Response({'detail': 'Admin privileges required'}, status=403)
     
-    total_users = User.objects.count()
-    total_blogs = Blog.objects.filter(deleted_at__isnull=True).count()
+    blog_id = request.query_params.get('blog_id', None)
 
-    stats_agg = BlogStats.objects.aggregate(
-        total_views=Sum('views'),
-        total_likes=Sum('likes'),
-        total_shares=Sum('shares')
-    )
+   
+    if blog_id:
+        blog_id = blog_id.rstrip('/')
+        try:
+            blog_id = int(blog_id)  # convert string to int
+        except ValueError:
+            return Response({'detail': 'blog_id must be an integer'}, status=400)
+        # Fetch stats for a single blog
+        blog = get_object_or_404(Blog, id=blog_id, deleted_at__isnull=True)
+        stats = getattr(blog, 'stats', None)  
+        if stats:
+            data = {
+                'blog_id': blog.id,
+                'title': blog.title,
+                'views': stats.views,
+                'likes': stats.likes,
+                'shares': stats.shares
+            }
+        else:
+            data = {
+                'blog_id': blog.id,
+                'title': blog.title,
+                'views': 0,
+                'likes': 0,
+                'shares': 0
+            }
+    else:
+        # Global stats
+        total_users = User.objects.count()
+        total_blogs = Blog.objects.filter(deleted_at__isnull=True).count()
 
-    data = {
-        'total_users': total_users,
-        'total_blogs': total_blogs,
-        'total_views': stats_agg['total_views'] or 0,
-        'total_likes': stats_agg['total_likes'] or 0,
-        'total_shares': stats_agg['total_shares'] or 0,
-    }
+        stats_agg = BlogStats.objects.aggregate(
+            total_views=Sum('views'),
+            total_likes=Sum('likes'),
+            total_shares=Sum('shares')
+        )
+
+        data = {
+            'total_users': total_users,
+            'total_blogs': total_blogs,
+            'total_views': stats_agg['total_views'] or 0,
+            'total_likes': stats_agg['total_likes'] or 0,
+            'total_shares': stats_agg['total_shares'] or 0,
+        }
 
     return Response(data)

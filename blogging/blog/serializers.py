@@ -2,23 +2,20 @@ from rest_framework import serializers
 from .models import User,Category,Blog,Comment,BlogStats
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth import get_user_model, password_validation
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes, force_str
-from django.core.exceptions import ValidationError
+from rest_framework.serializers import ValidationError
+
+User=get_user_model()
 
 # ! Validation for images(profile picture, blog image)
-def validate_image(file):
-    # Allowed file types
-    valid_mime_types = ['image/jpeg', 'image/png', 'image/gif']
-    if file.content_type not in valid_mime_types:
+def validate_image(image):
+    valid_extensions = ['jpg', 'jpeg', 'png', 'gif']
+    ext = image.name.split('.')[-1].lower()
+    if ext not in valid_extensions:
         raise ValidationError('Unsupported file type. Only JPG, PNG, GIF allowed.')
-
-    # Max file size
-    max_size = 5 * 1024 * 1024 
-    if file.size > max_size:
+    if image.size > 5 * 1024 * 1024:  # 5 MB
         raise ValidationError('File too large. Maximum size allowed is 5MB.')
+    return image
     
 # ! User serializer
 class UserSerializer(serializers.ModelSerializer):
@@ -60,10 +57,15 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['email'] = user.email
         token['is_admin'] = user.is_admin
         return token
-    
+
 # ! Forgot Password 
 class PasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("No account found with this email.")
+        return value
 
 # ! Reset Password
 class PasswordResetConfirmSerializer(serializers.Serializer):
@@ -102,16 +104,16 @@ class BlogSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(write_only=True)
 
     comments = CommentSerializer(many=True, read_only=True)
-    stats = BlogStatsSerializer(read_only=True)
+    
 
     class Meta:
         model = Blog
         fields = [
             'id', 'title', 'content', 'author', 'category', 'category_name', 'image',
             'created_at', 'updated_at', 'is_published', 'publish_at',
-            'deleted_at', 'comments', 'stats'
+            'deleted_at', 'comments'
         ]
-        read_only_fields = ['author', 'created_at', 'updated_at', 'deleted_at', 'comments', 'stats']
+        read_only_fields = ['author', 'created_at', 'updated_at', 'deleted_at', 'comments']
 
     def create(self, validated_data):
         category_name = validated_data.pop('category_name')

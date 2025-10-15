@@ -76,6 +76,5 @@ class BlogStats(models.Model):
 @receiver(post_save, sender=Blog)
 def create_blog_stats(sender, instance, created, **kwargs):
     if created and not hasattr(instance, 'stats'):
-        stats = BlogStats.objects.create(blog=instance)
-        instance.stats = stats
-        instance.save()
+        stats = BlogStats.objects.get_or_create(blog=instance)
+        

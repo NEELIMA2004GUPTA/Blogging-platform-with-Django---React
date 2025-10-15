@@ -25,4 +25,5 @@ urlpatterns = [
     path('blogs/<int:blog_id>/share/', blog_share, name='blog-share'),
 
     path('stats/', admin_stats, name='admin-stats'),
+    
 ]

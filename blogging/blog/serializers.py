@@ -19,10 +19,15 @@ def validate_image(image):
     
 # ! User serializer
 class UserSerializer(serializers.ModelSerializer):
+    is_admin = serializers.SerializerMethodField()
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'profile_picture', 'is_admin']
-        read_only_fields = ['is_admin'] 
+        fields = ['id', 'username', 'email', 'profile_picture', 'is_staff','is_admin']
+        read_only_fields = ['is_staff','is_admin'] 
+    
+    def get_is_admin(self, obj):
+        return obj.is_admin
+
 
 # ! Register Serializer
 class RegisterSerializer(serializers.ModelSerializer):
@@ -100,10 +105,12 @@ class BlogSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     category = CategorySerializer(read_only=True)
     category_name = serializers.CharField(write_only=True)
+    stats = BlogStatsSerializer(read_only=True)
+    comments = CommentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Blog
-        fields = ['id', 'title', 'content', 'author', 'category', 'category_name',"is_published","publish_at","created_at","deleted_at","updated_at"]
+        fields = ['id', 'title', 'content', 'author', 'category', 'category_name',"is_published","publish_at","created_at","deleted_at","updated_at","stats","comments"]
         read_only_fields = ['author', 'category',"created_at","deleted_at","updated_at"]
 
     def validate_category_name(self, value):

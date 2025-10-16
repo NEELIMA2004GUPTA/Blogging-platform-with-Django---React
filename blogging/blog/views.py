@@ -42,20 +42,26 @@ def register(request):
 
 
 #! Login (returns JWT token)
+
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
 
     def post(self, request, *args, **kwargs):
-        try:
-            return super().post(request, *args, **kwargs)
-        except (DatabaseError, OperationalError):
-            return Response(
-                {"detail": "Database connection error. Please try again later."},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
-            )
-        
-# ! Logout
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
+        # The authenticated user is now in serializer.user
+        user = serializer.user  
+        user_data = UserSerializer(user).data
+
+        # Return JWT + user info
+        return Response({
+            "access": serializer.validated_data["access"],
+            "refresh": serializer.validated_data["refresh"],
+            "user": user_data
+        }, status=status.HTTP_200_OK)
+        
+# ! logout 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout(request):
@@ -75,7 +81,6 @@ def logout(request):
 def me(request):
     serializer = UserSerializer(request.user)
     return Response(serializer.data)
-
 
 # ! Forgot password
 @api_view(['POST'])
@@ -127,21 +132,23 @@ def password_reset_confirm(request, uid, token):
 @api_view(['GET', 'POST'])
 def blogs_list_create(request):
     if request.method == 'GET':
-        if request.user.is_authenticated:
-            # Authenticated users: show published blogs + own blogs
-            blogs = Blog.objects.filter(
-                deleted_at__isnull=True
-            ).filter(
-                Q(is_published=True, publish_at__lte=timezone.now()) | 
-                Q(author=request.user)
-            )
+        if request.GET.get('mine') == 'true' and request.user.is_authenticated:
+            # Only blogs created by logged-in user
+            blogs = Blog.objects.filter(author=request.user, deleted_at__isnull=True)
         else:
-            # Public users: only published blogs
-            blogs = Blog.objects.filter(
-                deleted_at__isnull=True,
-                is_published=True,
-                publish_at__lte=timezone.now()
-            )
+            if request.user.is_authenticated:
+                blogs = Blog.objects.filter(
+                    deleted_at__isnull=True
+                ).filter(
+                    Q(is_published=True, publish_at__lte=timezone.now()) | 
+                    Q(author=request.user)
+                )
+            else:
+                blogs = Blog.objects.filter(
+                    deleted_at__isnull=True,
+                    is_published=True,
+                    publish_at__lte=timezone.now()
+                )
 
         # Search by title
         search_query = request.GET.get('search')
@@ -211,7 +218,18 @@ def blog_detail(request, blog_id):
             stats.save()
 
         serializer = BlogSerializer(blog)
-        return Response(serializer.data)
+        data = serializer.data
+
+        # Always include public stats
+        stats, _ = BlogStats.objects.get_or_create(blog=blog)
+        data['stats'] = {
+            "views": stats.views,
+            "likes": stats.likes,
+            "shares": stats.shares,
+            "comments": blog.comments.filter(deleted_at__isnull=True).count()
+        }
+
+        return Response(data)
 
     # PUT: Only author or admin can update
     elif request.method == 'PUT':
@@ -329,24 +347,25 @@ def comment_detail(request, comment_id):
 def blog_like(request, blog_id):
     blog = get_object_or_404(Blog, id=blog_id, deleted_at__isnull=True)
 
-    # You can optionally prevent author liking their own blog
     if request.user == blog.author:
         return Response({'detail': "Authors cannot like their own blog"}, status=403)
     
-    stats, created = BlogStats.objects.get_or_create(blog=blog)
-    blog.stats.likes += 1
-    blog.stats.save()
-    return Response({'likes': blog.stats.likes}, status=200)
+    stats, _ = BlogStats.objects.get_or_create(blog=blog)
+    stats.likes += 1
+    stats.save()
+    return Response({'likes': stats.likes}, status=200)
 
-# ! Share 
+# ! Shares
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def blog_share(request, blog_id):
     blog = get_object_or_404(Blog, id=blog_id, deleted_at__isnull=True)
 
-    blog.stats.shares += 1
-    blog.stats.save()
-    return Response({'shares': blog.stats.shares}, status=200)
+    stats, _ = BlogStats.objects.get_or_create(blog=blog)
+    stats.shares += 1
+    stats.save()
+    return Response({'shares': stats.shares}, status=200)
+
 
 # ! Get stats of a blog
 @api_view(['GET'])

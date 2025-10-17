@@ -29,7 +29,6 @@ export default function Home() {
       if (searchQuery) url += `&search=${searchQuery}`;
 
       const res = await axios.get(url);
-      // Ensure we have stats object for each blog to avoid undefined errors
       const blogsWithStats = res.data.blogs?.map(blog => ({
         ...blog,
         stats: blog.stats || { likes: 0, shares: 0 }
@@ -117,7 +116,6 @@ export default function Home() {
                     <Card.Subtitle className="mb-2 text-muted">
                       {blog.category?.name} | By {blog.author.username}
                     </Card.Subtitle>
-                    <Card.Text>{blog.content.substring(0, 150)}...</Card.Text>
                     <div>
                       Likes: {blog.stats.likes} | Shares: {blog.stats.shares}
                     </div>

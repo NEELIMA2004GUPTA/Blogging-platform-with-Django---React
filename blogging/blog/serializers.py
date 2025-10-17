@@ -107,10 +107,11 @@ class BlogSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(write_only=True)
     stats = BlogStatsSerializer(read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
+    image = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = Blog
-        fields = ['id', 'title', 'content', 'author', 'category', 'category_name',"is_published","publish_at","created_at","deleted_at","updated_at","stats","comments"]
+        fields = ['id', 'title', 'content', 'author', 'category', 'category_name','image',"is_published","publish_at","created_at","deleted_at","updated_at","stats","comments"]
         read_only_fields = ['author', 'category',"created_at","deleted_at","updated_at"]
 
     def validate_category_name(self, value):

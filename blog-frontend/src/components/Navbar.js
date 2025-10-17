@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { jwtDecode } from "jwt-decode"; // ✅ correct import
+import { jwtDecode } from "jwt-decode"; 
 import {
   Navbar as BootstrapNavbar,
   Nav,
@@ -14,7 +14,7 @@ export default function Navbar() {
   const token = localStorage.getItem("access");
   const [user, setUser] = useState(null);
 
-  // ✅ Wrap fetchUser in useCallback to fix the dependency warning
+  // Wrap fetchUser in useCallback to fix the dependency warning
   const fetchUser = useCallback(async () => {
     try {
       const res = await axios.get("http://127.0.0.1:8000/api/auth/me/", {
@@ -35,7 +35,7 @@ export default function Navbar() {
     navigate("/login");
   };
 
-  // ✅ Safely decode token and check admin role
+  // Safely decode token and check admin role
   let isAdmin = false;
   if (token) {
     try {
@@ -63,7 +63,7 @@ export default function Navbar() {
                 <Nav.Link as={Link} to="/my-blogs">
                   My Blogs
                 </Nav.Link>
-                <Nav.Link as={Link} to="/create">
+                <Nav.Link as={Link} to="/create-blog?id">
                   Create Blog
                 </Nav.Link>
 
@@ -81,25 +81,21 @@ export default function Navbar() {
                 <NavDropdown
                   title={
                     <>
-                      <img
-  src={
-    user?.profile_picture
-      ? `http://127.0.0.1:8000${user.profile_picture}`
-      : "https://via.placeholder.com/30"
-  }
-  alt="Profile"
-  style={{
-    width: "30px",
-    height: "30px",
-    borderRadius: "50%",
-    marginRight: "5px",
-  }}
-/>
+                      <img src={user?.profile_picture? `http://127.0.0.1:8000${user.profile_picture}`: "https://via.placeholder.com/30"}
+                        alt="Profile"
+                        style={{
+                        width: "30px",
+                        height: "30px",
+                        borderRadius: "50%",
+                        marginRight: "5px",}}/>
                       {user?.username || "Profile"}
                     </>
                   }
                   id="basic-nav-dropdown"
                 >
+                  <NavDropdown.Item as={Link} to="/upload-profile">
+                    Upload Profile Picture
+                  </NavDropdown.Item>
                   <NavDropdown.Item>
                     Username: {user?.username}
                   </NavDropdown.Item>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { Container, Card, Button, Form, ListGroup } from "react-bootstrap";
+import { Container, Card, Button, Form, ListGroup, Image } from "react-bootstrap";
 import axios from "axios";
 import { toast } from "react-toastify";
 
@@ -12,7 +12,7 @@ export default function BlogDetail() {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
 
-  // Fetch blog from backend
+  // Fetch blog
   const fetchBlog = useCallback(async () => {
     try {
       const res = await axios.get(`http://127.0.0.1:8000/api/blogs/${id}/`, {
@@ -25,6 +25,7 @@ export default function BlogDetail() {
     }
   }, [id, token]);
 
+  // Fetch comments
   const fetchComments = useCallback(async () => {
     try {
       const res = await axios.get(`http://127.0.0.1:8000/api/blogs/${id}/comments/`, {
@@ -51,7 +52,7 @@ export default function BlogDetail() {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      await fetchBlog(); // re-fetch to get updated likes
+      await fetchBlog();
       toast.success("Liked!");
     } catch (err) {
       console.log(err.response?.data);
@@ -68,7 +69,7 @@ export default function BlogDetail() {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      await fetchBlog(); // re-fetch to get updated shares
+      await fetchBlog();
       toast.success("Shared!");
     } catch (err) {
       console.log(err.response?.data);
@@ -89,8 +90,8 @@ export default function BlogDetail() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setNewComment("");
-      await fetchComments(); // refresh comments
-      await fetchBlog(); // update comment count in stats
+      await fetchComments();
+      await fetchBlog();
       toast.success("Comment added!");
     } catch (err) {
       console.log(err.response?.data);
@@ -100,6 +101,11 @@ export default function BlogDetail() {
 
   if (!blog) return <p>Loading...</p>;
 
+  // Blog image URL
+  const blogImageUrl = blog.image
+    ? `http://127.0.0.1:8000${blog.image}` // backend media path
+    : "https://via.placeholder.com/800x400?text=No+Image"; // placeholder
+
   return (
     <Container className="mt-4">
       <Card>
@@ -108,11 +114,15 @@ export default function BlogDetail() {
           <Card.Subtitle className="mb-2 text-muted">
             {blog.category?.name} | By {blog.author.username}
           </Card.Subtitle>
+
+          {/* Blog Image */}
+          <Image src={blogImageUrl} fluid rounded className="mb-3" style={{width: "50%",height: "300px",objectFit: "cover"}} />
+
           <Card.Text>{blog.content}</Card.Text>
 
           <div>
             <span>Likes: {blog.stats?.likes || 0}</span> |{" "}
-            <span>Shares: {blog.stats?.shares || 0}</span> |{" "}
+            <span>Shares: {blog.stats?.shares || 0}</span>
           </div>
 
           <div className="mt-3">
@@ -126,6 +136,7 @@ export default function BlogDetail() {
         </Card.Body>
       </Card>
 
+      {/* Comments */}
       <Card className="mt-4">
         <Card.Body>
           <Card.Title>Comments</Card.Title>

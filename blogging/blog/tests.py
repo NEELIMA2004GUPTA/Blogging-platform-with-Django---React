@@ -1,5 +1,5 @@
 from django.test import TestCase
-from rest_framework.test import APITestCase
+from rest_framework.test import APITestCase, APIClient
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from django.utils import timezone
@@ -9,6 +9,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.urls import reverse
 from blog.serializers import (UserSerializer, RegisterSerializer, MyTokenObtainPairSerializer,PasswordResetSerializer, PasswordResetConfirmSerializer,CategorySerializer, CommentSerializer, BlogStatsSerializer,BlogSerializer, validate_image)
 from .models import User, Blog, Category, Comment, BlogStats
+import tempfile
+from PIL import Image
 
 
 User = get_user_model()
@@ -318,8 +320,71 @@ class BlogAPITestCase(APITestCase):
         url = reverse('admin-stats')
         self.client.force_authenticate(user=self.admin)
         response = self.client.get(url)
+    
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+    
+        # Check totals
+        self.assertIn('total_users', response.data)
         self.assertIn('total_blogs', response.data)
         self.assertIn('total_views', response.data)
         self.assertIn('total_likes', response.data)
         self.assertIn('total_shares', response.data)
+    
+        # Check data by range
+        self.assertIn('users_by_range', response.data)
+        self.assertIsInstance(response.data['users_by_range'], list)
+    
+        self.assertIn('blogs_by_range', response.data)
+        self.assertIsInstance(response.data['blogs_by_range'], list)
+    
+        # Check category and blog stats
+        self.assertIn('category_stats', response.data)
+        self.assertIsInstance(response.data['category_stats'], list)
+    
+        self.assertIn('blog_stats', response.data)
+        self.assertIsInstance(response.data['blog_stats'], list)
+
+
+# ! upload picture test
+class UploadProfilePictureTest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='testpass123'
+        )
+        self.url = reverse('upload-profile-picture')  
+        self.client.force_authenticate(user=self.user)
+
+    def create_test_image(self):
+        """Creates a temporary image for testing"""
+        temp_image = tempfile.NamedTemporaryFile(suffix=".jpg")
+        image = Image.new('RGB', (100, 100), color='blue')
+        image.save(temp_image, format='JPEG')
+        temp_image.seek(0)
+        return temp_image
+
+    def test_upload_profile_picture_success(self):
+        """ Successfully upload a profile picture"""
+        image = self.create_test_image()
+        response = self.client.put(self.url, {'profile_picture': image}, format='multipart')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('message', response.data)
+        self.assertIn('profile_picture', response.data)
+        self.user.refresh_from_db()
+        self.assertTrue(bool(self.user.profile_picture))
+
+    def test_upload_profile_picture_no_file(self):
+        """ Upload without image should fail"""
+        response = self.client.put(self.url, {}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['error'], 'No image uploaded')
+
+    def test_upload_profile_picture_unauthenticated(self):
+        """ Unauthenticated user cannot upload"""
+        self.client.force_authenticate(user=None)
+        image = self.create_test_image()
+        response = self.client.put(self.url, {'profile_picture': image}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

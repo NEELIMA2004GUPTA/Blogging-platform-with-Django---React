@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import register, logout, me, MyTokenObtainPairView, blogs_list_create, blog_detail, password_reset_request, password_reset_confirm, categories_list_create,category_detail,blog_comments,comment_detail, blog_like,blog_share,admin_stats
+from .views import register, logout, me, MyTokenObtainPairView, blogs_list_create, blog_detail, password_reset_request, password_reset_confirm, categories_list_create,category_detail,blog_comments,comment_detail, blog_like,blog_share,admin_stats, upload_profile_picture
 from rest_framework_simplejwt.views import TokenRefreshView
 
 
@@ -25,5 +25,7 @@ urlpatterns = [
     path('blogs/<int:blog_id>/share/', blog_share, name='blog-share'),
 
     path('stats/', admin_stats, name='admin-stats'),
+
+    path('auth/upload-profile-picture/', upload_profile_picture, name='upload-profile-picture'),
     
 ]

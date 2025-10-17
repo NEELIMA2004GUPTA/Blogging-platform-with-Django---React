@@ -1,7 +1,8 @@
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes,parser_classes
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
@@ -14,6 +15,10 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.db import DatabaseError, OperationalError
+from rest_framework.permissions import IsAdminUser
+from django.db.models import Count
+from django.db.models.functions import TruncDay, TruncWeek, TruncMonth, TruncQuarter, TruncYear
+
 
 from .models import User, Blog , Category, Comment, BlogStats
 from django.db.models import Sum
@@ -97,7 +102,7 @@ def password_reset_request(request):
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
     
-    reset_link = f"http://127.0.0.1:8000/api/auth/reset-password-confirm/{uid}/{token}/"
+    reset_link = f"http://localhost:3000/reset-password/{uid}/{token}"
     
     send_mail(
         subject="Password Reset",
@@ -128,8 +133,22 @@ def password_reset_confirm(request, uid, token):
     
     return Response({"detail": "Password reset successful"}, status=status.HTTP_200_OK)
 
+# ! Upload Profile Picture 
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def upload_profile_picture(request):
+    user = request.user
+    if 'profile_picture' not in request.FILES:
+        return Response({'error': 'No image uploaded'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.profile_picture = request.FILES['profile_picture']
+    user.save()
+    return Response({'message': 'Profile picture updated successfully!', 'profile_picture': user.profile_picture.url})
+
 # ! List all blogs / Create blog
 @api_view(['GET', 'POST'])
+@parser_classes([MultiPartParser, FormParser])
 def blogs_list_create(request):
     if request.method == 'GET':
         if request.GET.get('mine') == 'true' and request.user.is_authenticated:
@@ -199,6 +218,7 @@ def blogs_list_create(request):
 
 # ! Get, Update, Delete single blog
 @api_view(['GET', 'PUT', 'DELETE'])
+@parser_classes([MultiPartParser, FormParser])
 def blog_detail(request, blog_id):
     # Fetch the blog and ensure it is not soft-deleted
     blog = get_object_or_404(Blog, id=blog_id, deleted_at__isnull=True)
@@ -368,58 +388,74 @@ def blog_share(request, blog_id):
 
 
 # ! Get stats of a blog
+
+RANGE_CHOICES = {
+    "daily": TruncDay,
+    "weekly": TruncWeek,
+    "monthly": TruncMonth,
+    "quarterly": TruncQuarter,
+    "yearly": TruncYear
+}
+
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def admin_stats(request):
-    # Only admin users can access
-    if not request.user.is_staff:  
-        return Response({'detail': 'Admin privileges required'}, status=403)
-    
-    blog_id = request.query_params.get('blog_id', None)
+    range_type = request.GET.get("range", "monthly")
+    truncate_func = RANGE_CHOICES.get(range_type, TruncMonth)
 
-   
-    if blog_id:
-        blog_id = blog_id.rstrip('/')
-        try:
-            blog_id = int(blog_id)  # convert string to int
-        except ValueError:
-            return Response({'detail': 'blog_id must be an integer'}, status=400)
-        # Fetch stats for a single blog
-        blog = get_object_or_404(Blog, id=blog_id, deleted_at__isnull=True)
-        stats = getattr(blog, 'stats', None)  
-        if stats:
-            data = {
-                'blog_id': blog.id,
-                'title': blog.title,
-                'views': stats.views,
-                'likes': stats.likes,
-                'shares': stats.shares
-            }
-        else:
-            data = {
-                'blog_id': blog.id,
-                'title': blog.title,
-                'views': 0,
-                'likes': 0,
-                'shares': 0
-            }
-    else:
-        # Global stats
-        total_users = User.objects.count()
-        total_blogs = Blog.objects.filter(deleted_at__isnull=True).count()
+    # Total counts
+    total_users = User.objects.count()
+    total_blogs = Blog.objects.count()
+    total_views = BlogStats.objects.aggregate(total=Sum('views'))['total'] or 0
+    total_likes = BlogStats.objects.aggregate(total=Sum('likes'))['total'] or 0
+    total_shares = BlogStats.objects.aggregate(total=Sum('shares'))['total'] or 0
 
-        stats_agg = BlogStats.objects.aggregate(
-            total_views=Sum('views'),
-            total_likes=Sum('likes'),
-            total_shares=Sum('shares')
-        )
+    # Users by range, filter out null date_joined
+    users_qs = User.objects.filter(date_joined__isnull=False)\
+                           .annotate(period=truncate_func('date_joined'))\
+                           .values('period')\
+                           .annotate(count=Count('id'))\
+                           .order_by('period')
+    users_by_range = [
+        {"period": u["period"].strftime("%Y-%m-%d"), "count": u["count"]}
+        for u in users_qs
+    ]
 
-        data = {
-            'total_users': total_users,
-            'total_blogs': total_blogs,
-            'total_views': stats_agg['total_views'] or 0,
-            'total_likes': stats_agg['total_likes'] or 0,
-            'total_shares': stats_agg['total_shares'] or 0,
-        }
+    # Blogs by range, filter out null publish_at
+    blogs_qs = Blog.objects.filter(publish_at__isnull=False)\
+                           .annotate(period=truncate_func('publish_at'))\
+                           .values('period')\
+                           .annotate(count=Count('id'))\
+                           .order_by('period')
+    blogs_by_range = [
+        {"period": b["period"].strftime("%Y-%m-%d"), "count": b["count"]}
+        for b in blogs_qs
+    ]
+
+    # Likes & Shares & Views by category
+    category_stats = Category.objects.annotate(
+        total_likes=Sum('blogs__stats__likes'),
+        total_shares=Sum('blogs__stats__shares'),
+        total_views=Sum('blogs__stats__views')
+    ).values('name', 'total_likes', 'total_shares', 'total_views')
+
+    # Blog-wise stats
+    blog_stats = Blog.objects.annotate(
+        likes=Sum('stats__likes'),
+        shares=Sum('stats__shares'),
+        views=Sum('stats__views')
+    ).values('title', 'likes', 'shares', 'views')
+
+    data = {
+        "total_users": total_users,
+        "total_blogs": total_blogs,
+        "total_views": total_views,
+        "total_likes": total_likes,
+        "total_shares": total_shares,
+        "users_by_range": users_by_range,
+        "blogs_by_range": blogs_by_range,
+        "category_stats": list(category_stats),
+        "blog_stats": list(blog_stats)
+    }
 
     return Response(data)

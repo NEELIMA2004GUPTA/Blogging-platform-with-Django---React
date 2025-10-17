@@ -2,7 +2,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from rest_framework.decorators import api_view, permission_classes,parser_classes
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
@@ -148,7 +148,7 @@ def upload_profile_picture(request):
 
 # ! List all blogs / Create blog
 @api_view(['GET', 'POST'])
-@parser_classes([MultiPartParser, FormParser])
+@parser_classes([JSONParser,MultiPartParser, FormParser])
 def blogs_list_create(request):
     if request.method == 'GET':
         if request.GET.get('mine') == 'true' and request.user.is_authenticated:
@@ -218,7 +218,7 @@ def blogs_list_create(request):
 
 # ! Get, Update, Delete single blog
 @api_view(['GET', 'PUT', 'DELETE'])
-@parser_classes([MultiPartParser, FormParser])
+@parser_classes([JSONParser,MultiPartParser, FormParser])
 def blog_detail(request, blog_id):
     # Fetch the blog and ensure it is not soft-deleted
     blog = get_object_or_404(Blog, id=blog_id, deleted_at__isnull=True)

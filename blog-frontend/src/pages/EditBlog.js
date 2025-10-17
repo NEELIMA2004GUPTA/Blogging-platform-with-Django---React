@@ -21,8 +21,7 @@ export default function EditBlog() {
   // Prefill blog
   useEffect(() => {
     if (id && token) {
-      axios
-        .get(`http://127.0.0.1:8000/api/blogs/${id}/`, {
+      axios.get(`http://127.0.0.1:8000/api/blogs/${id}/`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         .then((res) => {

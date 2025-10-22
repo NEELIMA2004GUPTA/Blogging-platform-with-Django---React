@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from "react";
 import { Form, Button, Container, InputGroup, Image } from "react-bootstrap";
 import { toast } from "react-toastify";
-import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
+import API from "../api/axios";
 
 export default function EditBlog() {
   const { id } = useParams();
@@ -13,7 +13,7 @@ export default function EditBlog() {
   const [content, setContent] = useState("");
   const [category, setCategory] = useState("");
   const [image, setImage] = useState(null);
-  const [preview, setPreview] = useState(""); // existing image preview
+  const [preview, setPreview] = useState(""); 
   const [publishAt, setPublishAt] = useState("");
 
   const token = localStorage.getItem("access");
@@ -21,7 +21,7 @@ export default function EditBlog() {
   // Prefill blog
   useEffect(() => {
     if (id && token) {
-      axios.get(`http://127.0.0.1:8000/api/blogs/${id}/`, {
+      API.get(`/blogs/${id}/`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         .then((res) => {
@@ -29,7 +29,7 @@ export default function EditBlog() {
           setContent(res.data.content);
           setCategory(res.data.category?.name || "");
           setPublishAt(res.data.publish_at || "");
-          if (res.data.image) setPreview(`http://127.0.0.1:8000${res.data.image}`);
+          if (res.data.image) setPreview(`${res.data.image}`);
         })
         .catch((err) => {
           console.log(err.response?.data);
@@ -50,7 +50,7 @@ export default function EditBlog() {
     if (publishAt) formData.append("publish_at", publishAt);
 
     try {
-      await axios.put(`http://127.0.0.1:8000/api/blogs/${id}/`, formData, {
+      await API.put(`/blogs/${id}/`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",

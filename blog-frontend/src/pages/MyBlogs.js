@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Container, Card, Button } from "react-bootstrap";
-import axios from "axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import API from "../api/axios";
 
 export default function MyBlogs() {
   const [blogs, setBlogs] = useState([]);
@@ -13,7 +13,7 @@ export default function MyBlogs() {
   const fetchMyBlogs = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await axios.get("http://127.0.0.1:8000/api/blogs/?mine=true", {
+      const res = await API.get("/blogs/?mine=true", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setBlogs(res.data.blogs || res.data);
@@ -31,7 +31,7 @@ export default function MyBlogs() {
   const handleDelete = async (id) => {
     if (!token) return;
     try {
-      await axios.delete(`http://127.0.0.1:8000/api/blogs/${id}/`, {
+      await API.delete(`/blogs/${id}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success("Blog deleted!");

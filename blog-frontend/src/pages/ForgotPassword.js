@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Container, Form, Button } from "react-bootstrap";
-import axios from "axios";
 import { toast } from "react-toastify";
+import API from "../api/axios";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -9,7 +9,7 @@ export default function ForgotPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://127.0.0.1:8000/api/auth/reset-password/", {
+      await API.post("/auth/reset-password/", {
         email,
       });
       toast.success("Password reset link sent to your email!");

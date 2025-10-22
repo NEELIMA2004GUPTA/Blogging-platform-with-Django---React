@@ -4,6 +4,9 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model, password_validation
 from rest_framework.serializers import ValidationError
+from django.conf import settings
+from urllib.parse import urljoin
+
 
 User=get_user_model()
 
@@ -20,6 +23,8 @@ def validate_image(image):
 # ! User serializer
 class UserSerializer(serializers.ModelSerializer):
     is_admin = serializers.SerializerMethodField()
+    profile_picture = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'profile_picture', 'is_staff','is_admin']
@@ -27,7 +32,12 @@ class UserSerializer(serializers.ModelSerializer):
     
     def get_is_admin(self, obj):
         return obj.is_admin
-
+    
+    def get_profile_picture(self, obj):
+        if obj.profile_picture:
+            return f"{settings.NGROK_URL}{obj.profile_picture.url}"
+        return "https://via.placeholder.com/30"
+    
 
 # ! Register Serializer
 class RegisterSerializer(serializers.ModelSerializer):
@@ -107,11 +117,12 @@ class BlogSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(write_only=True)
     stats = BlogStatsSerializer(read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
+    image_url= serializers.SerializerMethodField()
     image = serializers.ImageField(required=False, allow_null=True)
-
+    
     class Meta:
         model = Blog
-        fields = ['id', 'title', 'content', 'author', 'category', 'category_name','image',"is_published","publish_at","created_at","deleted_at","updated_at","stats","comments"]
+        fields = ['id', 'title', 'content', 'author', 'category', 'category_name','image_url','image',"is_published","publish_at","created_at","deleted_at","updated_at","stats","comments"]
         read_only_fields = ['author', 'category',"created_at","deleted_at","updated_at"]
 
     def validate_category_name(self, value):
@@ -137,3 +148,8 @@ class BlogSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
         return instance
+    
+    def get_image_url(self, obj):
+        if obj.image:
+            return f"{settings.NGROK_URL}{obj.image.url}"
+        return "https://via.placeholder.com/150"

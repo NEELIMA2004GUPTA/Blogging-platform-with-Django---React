@@ -57,7 +57,7 @@ class MyTokenObtainPairView(TokenObtainPairView):
 
         # The authenticated user is now in serializer.user
         user = serializer.user  
-        user_data = UserSerializer(user).data
+        user_data = UserSerializer(user,context={'request': request}).data
 
         # Return JWT + user info
         return Response({
@@ -102,7 +102,7 @@ def password_reset_request(request):
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
     
-    reset_link = f"http://localhost:3000/reset-password/{uid}/{token}"
+    reset_link = f"https://omar-heady-paulina.ngrok-free.dev/reset-password/{uid}/{token}"
     
     send_mail(
         subject="Password Reset",
@@ -196,7 +196,7 @@ def blogs_list_create(request):
         paginator = Paginator(blogs, page_size)
         page_obj = paginator.get_page(page_number)
 
-        serializer = BlogSerializer(page_obj.object_list, many=True)
+        serializer = BlogSerializer(page_obj.object_list, many=True, context={'request': request})
 
         return Response({
             'total_pages': paginator.num_pages,

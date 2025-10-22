@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Container, Row, Col, Card, Form } from "react-bootstrap";
-import axios from "axios";
+import API from "../api/axios";
 import { toast } from "react-toastify";
 import {LineChart,Line,AreaChart,Area,BarChart,Bar,PieChart,Pie,Cell,XAxis,YAxis,Tooltip,Legend,ResponsiveContainer,} from "recharts";
 
@@ -11,8 +11,8 @@ export default function AdminDashboard() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await axios.get(
-        `http://127.0.0.1:8000/api/stats/?range=${range}`,
+      const res = await API.get(
+        `/stats/?range=${range}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setStats(res.data);

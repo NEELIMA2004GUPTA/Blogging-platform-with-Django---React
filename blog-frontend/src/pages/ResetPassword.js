@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Container, Form, Button } from "react-bootstrap";
-import axios from "axios";
 import { toast } from "react-toastify";
+import API from "../api/axios";
 
 export default function ResetPassword() {
   const { uid, token } = useParams();
@@ -21,8 +21,8 @@ export default function ResetPassword() {
 
     setLoading(true);
     try {
-      const res = await axios.post(
-        `http://127.0.0.1:8000/api/auth/reset-password-confirm/${uid}/${token}/`,
+      const res = await API.post(
+        `/auth/reset-password-confirm/${uid}/${token}/`,
         { new_password: newPassword }
       );
       toast.success(res.data.message || "Password reset successfully!");

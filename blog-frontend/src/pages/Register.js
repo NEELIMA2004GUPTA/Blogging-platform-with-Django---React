@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Form, Button, Container } from "react-bootstrap";
-import axios from "axios";
 import { toast } from "react-toastify";
+import API from "../api/axios";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -17,7 +17,7 @@ export default function Register() {
       return;
     }
     try {
-      await axios.post("http://127.0.0.1:8000/api/auth/register/", form);
+      await API.post("/auth/register/", form);
       toast.success("Registered successfully!");
       navigate("/login");
     } catch (err) {

@@ -1,19 +1,20 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Form, Button, Container } from "react-bootstrap";
-import axios from "axios";
 import { toast } from "react-toastify";
+import API from "../api/axios";
 
 export default function Login() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ username: "", password: "" });
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post("http://127.0.0.1:8000/api/auth/login/", form);
+      const res = await API.post("/auth/login/", form);
 
       // Store access, refresh, and full user object
       localStorage.setItem("access", res.data.access);
@@ -21,9 +22,22 @@ export default function Login() {
       localStorage.setItem("user", JSON.stringify(res.data.user)); // now includes is_admin
 
       toast.success("Logged in successfully!");
-      navigate("/home"); // redirect after login
+      navigate("/home");
     } catch (err) {
-      toast.error("Login failed!");
+      console.error("Login error:", err.response?.data || err.message); // Debug: shows backend error
+      if (err.response) {
+        if (err.response.status === 401) {
+          toast.error("Invalid credentials!");
+        } else if (err.response.status === 404) {
+          toast.error("Login endpoint not found!");
+        } else {
+          toast.error("Login failed! Check console for details.");
+        }
+      } else {
+        toast.error("Network or server error!");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 

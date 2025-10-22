@@ -14,11 +14,12 @@ from pathlib import Path
 from datetime import timedelta
 import os
 from dotenv import load_dotenv
+from urllib.parse import urljoin
 
 load_dotenv()
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+
+NGROK_URL = "https://omar-heady-paulina.ngrok-free.dev"
 
 
 # Quick-start development settings - unsuitable for production
@@ -30,7 +31,11 @@ SECRET_KEY = 'django-insecure-ukuyd6!7=a&%5-g1jo(8qy+ve7^^k+!xdu&%j+)0$_(b69mht@
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "127.0.0.1", 
+    "localhost",
+    'omar-heady-paulina.ngrok-free.dev',
+]
 
 AUTH_USER_MODEL = 'blog.User'
 
@@ -63,27 +68,35 @@ SIMPLE_JWT = {
 }
 
 CORS_ALLOWED_ORIGINS = [
+    "http://192.168.1.100:3000",
     "http://localhost:3000",
+    "https://omar-heady-paulina.ngrok-free.dev",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://192.168.1.100:3000",
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
 ]
 
 ROOT_URLCONF = 'blogging.urls'
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'blog-frontend' / 'build'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -94,6 +107,8 @@ TEMPLATES = [
         },
     },
 ]
+
+STATICFILES_DIRS = [BASE_DIR / "blog-frontend" / "build" / "static"]
 
 WSGI_APPLICATION = 'blogging.wsgi.application'
 
@@ -151,7 +166,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = BASE_DIR / 'media'
 
 #  maximum upload size in bytes (e.g., 5MB)
 MAX_UPLOAD_SIZE = 5 * 1024 * 1024
@@ -168,3 +183,4 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Blogging Platform <noreply@blog.com>')
+

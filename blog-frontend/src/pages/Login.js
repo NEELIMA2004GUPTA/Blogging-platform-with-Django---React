@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Form, Button, Container } from "react-bootstrap";
-import axios from "axios";
 import { toast } from "react-toastify";
+import API from "../api/axios";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -14,7 +14,7 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post("http://127.0.0.1:8000/api/auth/login/", form);
+      const res = await API.post("/auth/login/", form);
 
       const user = res.data.user;
 
@@ -28,7 +28,7 @@ export default function Login() {
       localStorage.setItem("is_admin", user.is_staff); 
 
       toast.success("Logged in successfully!");
-      navigate("/");
+      navigate("/home");
     } catch (err) {
       toast.error("Login failed!");
     }

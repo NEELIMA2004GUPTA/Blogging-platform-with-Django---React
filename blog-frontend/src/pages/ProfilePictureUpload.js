@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Form, Button, Container, Image } from "react-bootstrap";
 import { toast } from "react-toastify";
-import axios from "axios";
+import API from "../api/axios";
 
 export default function ProfilePictureUpload() {
   const [image, setImage] = useState(null);
@@ -22,8 +22,8 @@ export default function ProfilePictureUpload() {
     formData.append("profile_picture", image);
 
     try {
-      await axios.put(
-        "http://127.0.0.1:8000/api/auth/upload-profile-picture/",
+      await API.put(
+        "/auth/upload-profile-picture/",
         formData,
         {
           headers: {

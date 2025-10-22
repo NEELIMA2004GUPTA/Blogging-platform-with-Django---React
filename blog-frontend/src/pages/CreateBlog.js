@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Form, Button, Container, InputGroup, Image } from "react-bootstrap";
 import { toast } from "react-toastify";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import API from "../api/axios";
 
 export default function CreateBlog() {
   const navigate = useNavigate();
@@ -33,7 +33,7 @@ export default function CreateBlog() {
     if (publishAt) formData.append("publish_at", publishAt);
 
     try {
-      await axios.post(`http://127.0.0.1:8000/api/blogs/`, formData, {
+      await API.post(`/blogs/`, formData, {
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
       });
       toast.success("Blog created successfully!");

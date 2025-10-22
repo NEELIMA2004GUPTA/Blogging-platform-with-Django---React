@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { Container, Card, Button, Form, ListGroup, Image } from "react-bootstrap";
-import axios from "axios";
 import { toast } from "react-toastify";
+import API from "../api/axios";
 
 export default function BlogDetail() {
   const { id } = useParams();
@@ -15,7 +15,7 @@ export default function BlogDetail() {
   // Fetch blog
   const fetchBlog = useCallback(async () => {
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/api/blogs/${id}/`, {
+      const res = await API.get(`/blogs/${id}/`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       setBlog(res.data);
@@ -28,7 +28,7 @@ export default function BlogDetail() {
   // Fetch comments
   const fetchComments = useCallback(async () => {
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/api/blogs/${id}/comments/`, {
+      const res = await API.get(`/blogs/${id}/comments/`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       setComments(res.data);
@@ -47,8 +47,8 @@ export default function BlogDetail() {
   const handleLike = async () => {
     if (!token) return toast.error("Login to like!");
     try {
-      await axios.post(
-        `http://127.0.0.1:8000/api/blogs/${id}/like/`,
+      await API.post(
+        `/blogs/${id}/like/`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -64,8 +64,8 @@ export default function BlogDetail() {
   const handleShare = async () => {
     if (!token) return toast.error("Login to share!");
     try {
-      await axios.post(
-        `http://127.0.0.1:8000/api/blogs/${id}/share/`,
+      await API.post(
+        `/blogs/${id}/share/`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -84,8 +84,8 @@ export default function BlogDetail() {
     if (!newComment.trim()) return toast.error("Cannot post empty comment");
 
     try {
-      await axios.post(
-        `http://127.0.0.1:8000/api/blogs/${id}/comments/`,
+      await API.post(
+        `/blogs/${id}/comments/`,
         { content: newComment },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -101,11 +101,7 @@ export default function BlogDetail() {
 
   if (!blog) return <p>Loading...</p>;
 
-  // Blog image URL
-  const blogImageUrl = blog.image
-    ? `http://127.0.0.1:8000${blog.image}` // backend media path
-    : "https://via.placeholder.com/800x400?text=No+Image"; // placeholder
-
+  
   return (
     <Container className="mt-4">
       <Card>
@@ -116,7 +112,7 @@ export default function BlogDetail() {
           </Card.Subtitle>
 
           {/* Blog Image */}
-          <Image src={blogImageUrl} fluid rounded className="mb-3" style={{width: "50%",height: "300px",objectFit: "cover"}} />
+          <Image src={blog.image_url || "https://via.placeholder.com/150"} fluid rounded className="mb-3" style={{width: "50%",height: "300px",objectFit: "cover"}} />
 
           <Card.Text>{blog.content}</Card.Text>
 

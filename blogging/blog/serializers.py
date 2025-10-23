@@ -5,7 +5,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model, password_validation
 from rest_framework.serializers import ValidationError
 from django.conf import settings
-from urllib.parse import urljoin
+
 
 
 User=get_user_model()
@@ -119,10 +119,11 @@ class BlogSerializer(serializers.ModelSerializer):
     comments = CommentSerializer(many=True, read_only=True)
     image_url= serializers.SerializerMethodField()
     image = serializers.ImageField(required=False, allow_null=True)
+    liked = serializers.SerializerMethodField()
     
     class Meta:
         model = Blog
-        fields = ['id', 'title', 'content', 'author', 'category', 'category_name','image_url','image',"is_published","publish_at","created_at","deleted_at","updated_at","stats","comments"]
+        fields = ['id', 'title', 'content', 'author', 'category', 'category_name','image_url','image','liked','likes',"is_published","publish_at","created_at","deleted_at","updated_at","stats","comments"]
         read_only_fields = ['author', 'category',"created_at","deleted_at","updated_at"]
 
     def validate_category_name(self, value):
@@ -153,3 +154,16 @@ class BlogSerializer(serializers.ModelSerializer):
         if obj.image:
             return f"{settings.NGROK_URL}{obj.image.url}"
         return "https://via.placeholder.com/150"
+    
+    def get_likes(self, obj):
+        if hasattr(obj, 'stats'):
+            return obj.stats.likes
+        return 0
+
+    def get_liked(self, obj):
+        user = self.context['request'].user
+        if not hasattr(obj, 'stats'):
+            return False
+        if user.is_authenticated:
+            return obj.stats.liked_users.filter(id=user.id).exists()
+        return False

@@ -34,6 +34,8 @@ class Blog(models.Model):
     is_published = models.BooleanField(default=False)
     publish_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    likes = models.PositiveIntegerField(default=0)
+    liked_users = models.ManyToManyField(User, related_name='liked_blogs_main', blank=True)
     
 
     def soft_delete(self):
@@ -67,9 +69,10 @@ class Comment(models.Model):
 class BlogStats(models.Model):
     blog = models.OneToOneField(Blog, on_delete=models.CASCADE, related_name='stats')
     views = models.PositiveIntegerField(default=0)
-    likes = models.PositiveIntegerField(default=0)
+    liked_users = models.ManyToManyField(User, related_name="liked_blogs", blank=True)
     shares = models.PositiveIntegerField(default=0)
-
+    likes = models.PositiveIntegerField(default=0)
+    
     def __str__(self):
         return f"Stats for {self.blog.title}"
 

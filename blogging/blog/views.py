@@ -237,7 +237,7 @@ def blog_detail(request, blog_id):
             stats.views += 1
             stats.save()
 
-        serializer = BlogSerializer(blog)
+        serializer = BlogSerializer(blog,context={'request': request})
         data = serializer.data
 
         # Always include public stats
@@ -369,11 +369,19 @@ def blog_like(request, blog_id):
 
     if request.user == blog.author:
         return Response({'detail': "Authors cannot like their own blog"}, status=403)
-    
+
     stats, _ = BlogStats.objects.get_or_create(blog=blog)
+
+   
+    if stats.liked_users.filter(id=request.user.id).exists():
+        return Response({'detail': "You have already liked this blog."}, status=400)
+
     stats.likes += 1
+    stats.liked_users.add(request.user)
     stats.save()
-    return Response({'likes': stats.likes}, status=200)
+
+    return Response({'likes': stats.likes, 'liked': True}, status=200)
+
 
 # ! Shares
 @api_view(['POST'])

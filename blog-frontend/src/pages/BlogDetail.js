@@ -44,19 +44,32 @@ export default function BlogDetail() {
   }, [fetchBlog, fetchComments]);
 
   // Like blog
-  const handleLike = async () => {
-    if (!token) return toast.error("Login to like!");
+  const handleLike = async (blogId) => {
     try {
-      await API.post(
-        `/blogs/${id}/like/`,
+      const res = await API.post(
+        `/blogs/${blogId}/like/`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
-      await fetchBlog();
-      toast.success("Liked!");
+
+      // Update frontend instantly
+      setBlog((prevBlog) => ({
+        ...prevBlog,
+        likes: res.data.likes,
+        liked: true,
+      }));;
+
+      toast.success("You liked this blog!");
     } catch (err) {
-      console.log(err.response?.data);
-      toast.error("Failed to like!");
+      if (err.response?.status === 400) {
+        toast.info(err.response.data.detail);
+      } else if (err.response?.status === 403) {
+        toast.warn(err.response.data.detail || "You cannot like your own blog");
+      } else {
+        toast.error("Something went wrong while liking");
+      }
     }
   };
 
@@ -116,14 +129,18 @@ export default function BlogDetail() {
 
           <Card.Text>{blog.content}</Card.Text>
 
-          <div>
-            <span>Likes: {blog.stats?.likes || 0}</span> |{" "}
+          <div className="d-flex gap-3">
+            <span>Likes: {blog.stats?.likes || 0}</span>
             <span>Shares: {blog.stats?.shares || 0}</span>
           </div>
-
+          
           <div className="mt-3">
-            <Button variant="primary" className="me-2" onClick={handleLike}>
-              Like
+            <Button
+              variant={blog.liked ? "success" : "outline-primary"}
+                disabled={blog.liked}
+                onClick={() => handleLike(blog.id)} 
+            >
+            {blog.liked ? "Liked ❤️" : "Like 👍"}
             </Button>
             <Button variant="secondary" onClick={handleShare}>
               Share

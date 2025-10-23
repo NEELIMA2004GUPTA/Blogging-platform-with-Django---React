@@ -1,4 +1,3 @@
-// src/pages/EditBlog.js
 import React, { useState, useEffect } from "react";
 import { Form, Button, Container, InputGroup, Image } from "react-bootstrap";
 import { toast } from "react-toastify";
@@ -8,15 +7,30 @@ import API from "../api/axios";
 export default function EditBlog() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const token = localStorage.getItem("access");
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState("");
+  const [categories, setCategories] = useState([]);
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(""); 
   const [publishAt, setPublishAt] = useState("");
 
-  const token = localStorage.getItem("access");
+  // Fetch categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await API.get("/categories/");
+        const cats = Array.isArray(res.data) ? res.data : res.data?.categories || [];
+        setCategories(cats);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load categories!");
+      }
+    };
+    fetchCategories();
+  }, []);
 
   // Prefill blog
   useEffect(() => {
@@ -29,7 +43,7 @@ export default function EditBlog() {
           setContent(res.data.content);
           setCategory(res.data.category?.name || "");
           setPublishAt(res.data.publish_at || "");
-          if (res.data.image) setPreview(`${res.data.image}`);
+          if (res.data.image) setPreview(res.data.image);
         })
         .catch((err) => {
           console.log(err.response?.data);
@@ -68,21 +82,47 @@ export default function EditBlog() {
     <Container className="mt-4">
       <h2>Edit Blog</h2>
       <Form onSubmit={handleSubmit}>
+        {/* Title */}
         <Form.Group className="mb-3">
           <Form.Label>Title</Form.Label>
-          <Form.Control type="text" value={title} onChange={(e) => setTitle(e.target.value)} required />
+          <Form.Control
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+          />
         </Form.Group>
 
+        {/* Category Dropdown */}
         <Form.Group className="mb-3">
           <Form.Label>Category</Form.Label>
-          <Form.Control type="text" value={category} onChange={(e) => setCategory(e.target.value)} required />
+          <Form.Select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            required
+          >
+            <option value="">Select a category</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.name}>
+                {cat.name}
+              </option>
+            ))}
+          </Form.Select>
         </Form.Group>
 
+        {/* Content */}
         <Form.Group className="mb-3">
           <Form.Label>Content</Form.Label>
-          <Form.Control as="textarea" rows={5} value={content} onChange={(e) => setContent(e.target.value)} required />
+          <Form.Control
+            as="textarea"
+            rows={5}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            required
+          />
         </Form.Group>
 
+        {/* Publish Date */}
         <Form.Group className="mb-3">
           <Form.Label>Publish Date & Time</Form.Label>
           <InputGroup>
@@ -91,18 +131,36 @@ export default function EditBlog() {
               value={publishAt}
               onChange={(e) => setPublishAt(e.target.value)}
             />
-            <Button variant="secondary" onClick={() => setPublishAt(new Date().toISOString().slice(0, 16))}>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                setPublishAt(new Date().toISOString().slice(0, 16))
+              }
+            >
               Now
             </Button>
           </InputGroup>
         </Form.Group>
 
+        {/* Image */}
         <Form.Group className="mb-3">
           <Form.Label>Image (optional)</Form.Label>
-          {preview && <Image src={preview} fluid thumbnail className="mb-2" style={{ width: "200px", height: "150px", objectFit: "cover" }} />}
-          <Form.Control type="file" onChange={(e) => setImage(e.target.files[0])} />
+          {preview && (
+            <Image
+              src={preview}
+              fluid
+              thumbnail
+              className="mb-2"
+              style={{ width: "200px", height: "150px", objectFit: "cover" }}
+            />
+          )}
+          <Form.Control
+            type="file"
+            onChange={(e) => setImage(e.target.files[0])}
+          />
         </Form.Group>
 
+        {/* Submit Button */}
         <Button type="submit">Update Blog</Button>
       </Form>
     </Container>

@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api/axios";
-import { jwtDecode } from "jwt-decode";
 
 export default function CategoryManagement() {
   const navigate = useNavigate();
   const token = localStorage.getItem("access");
- 
+
   const [categories, setCategories] = useState([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -14,36 +13,58 @@ export default function CategoryManagement() {
   const [error, setError] = useState(null);
   const [editingId, setEditingId] = useState(null);
 
+  const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Decode token and check admin
+  // Fetch logged-in user and check admin
+  useEffect(() => {
+    const fetchUser = async () => {
+      if (!token) return;
+      try {
+        const res = await API.get("/auth/me/", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUser(res.data);
+        setIsAdmin(res.data.is_admin || res.data.role === "admin");
+      } catch (err) {
+        console.error(err);
+        setIsAdmin(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUser();
+  }, [token]);
 
-  let isAdmin = false;
-  if (token) {
-    const decoded = jwtDecode(token);
-    isAdmin = decoded?.is_admin || decoded?.role === "admin";
-  }
-
-  // Fetch categories
-
+  // Fetch categories after confirming admin
   useEffect(() => {
     if (!token || !isAdmin) return;
 
-    API.get("/categories/", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => setCategories(res.data))
-      .catch((err) => console.error(err));
+    const fetchCategories = async () => {
+      try {
+        const res = await API.get("/categories/", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setCategories(res.data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchCategories();
   }, [token, isAdmin]);
 
-  // Redirect if not logged in
+  // While fetching user info
+  if (loading) return null;
 
+  // Redirect if not logged in
   if (!token) {
     navigate("/login");
     return null;
   }
 
   // Access denied if not admin
-
   if (!isAdmin) {
     return (
       <div className="container mt-5 text-center">
@@ -54,7 +75,6 @@ export default function CategoryManagement() {
   }
 
   // Handle form submit (create or edit)
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage(null);
@@ -74,7 +94,6 @@ export default function CategoryManagement() {
         );
         setMessage(`Category "${res.data.name}" updated successfully.`);
       } else {
-
         // Create new category
         res = await API.post(
           "/categories/",
@@ -88,7 +107,6 @@ export default function CategoryManagement() {
       setDescription("");
       setEditingId(null);
       navigate("/home");
-
     } catch (err) {
       console.error(err);
       if (err.response?.status === 403) {
@@ -102,7 +120,6 @@ export default function CategoryManagement() {
   };
 
   // Handle edit
-
   const handleEdit = (category) => {
     setName(category.name);
     setDescription(category.description);
@@ -111,9 +128,7 @@ export default function CategoryManagement() {
     setError(null);
   };
 
-
   // Handle delete
-
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this category?")) return;
 
@@ -184,14 +199,26 @@ export default function CategoryManagement() {
                   <td>{cat.name}</td>
                   <td>{cat.description}</td>
                   <td>
-                    <button className="btn btn-sm btn-warning me-2" onClick={() => handleEdit(cat)}>Edit</button>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(cat.id)}>Delete</button>
+                    <button
+                      className="btn btn-sm btn-warning me-2"
+                      onClick={() => handleEdit(cat)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="btn btn-sm btn-danger"
+                      onClick={() => handleDelete(cat.id)}
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="3" className="text-center">No categories found.</td>
+                <td colSpan="3" className="text-center">
+                  No categories found.
+                </td>
               </tr>
             )}
           </tbody>

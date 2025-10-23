@@ -4,7 +4,6 @@ const API = axios.create({
   baseURL: 'https://omar-heady-paulina.ngrok-free.dev/api',
 });
 
-
 // Add token automatically if stored
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem('access');

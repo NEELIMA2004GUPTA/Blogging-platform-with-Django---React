@@ -10,10 +10,11 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState("newest");
+  const [typingTimeout, setTypingTimeout] = useState(null);
 
   const navigate = useNavigate();
 
-  // Fetch categories safely
+  // Fetch categories once
   const fetchCategories = async () => {
     try {
       const res = await API.get("/categories/");
@@ -21,17 +22,16 @@ export default function Home() {
       setCategories(cats);
     } catch (err) {
       toast.error("Failed to load categories!");
-      setCategories([]); // fallback
       console.error(err);
     }
   };
 
-  // Fetch blogs safely
-  const fetchBlogs = useCallback(async () => {
+  // Fetch blogs with optional search term
+  const fetchBlogs = useCallback(async (searchTerm = "") => {
     try {
       let url = `/blogs/?sort=${sortOrder}`;
       if (selectedCategory) url += `&category=${selectedCategory}`;
-      if (searchQuery) url += `&search=${searchQuery}`;
+      if (searchTerm) url += `&search=${searchTerm}`;
 
       const res = await API.get(url);
       const blogsArray = Array.isArray(res.data.blogs) ? res.data.blogs : [];
@@ -42,23 +42,37 @@ export default function Home() {
       setBlogs(blogsWithStats);
     } catch (err) {
       toast.error("Failed to load blogs!");
-      setBlogs([]);
       console.error(err);
     }
-  }, [selectedCategory, searchQuery, sortOrder]);
+  }, [selectedCategory, sortOrder]);
 
   useEffect(() => {
     fetchCategories();
   }, []);
 
+  // Refetch blogs when category or sort order changes
   useEffect(() => {
-    fetchBlogs();
-  }, [fetchBlogs]);
+    fetchBlogs(searchQuery);
+  }, [fetchBlogs, selectedCategory, sortOrder]);
+
+  // Debounced search
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+
+    if (typingTimeout) clearTimeout(typingTimeout);
+
+    const timeout = setTimeout(() => {
+      fetchBlogs(value);
+    }, 500); // 500ms delay
+
+    setTypingTimeout(timeout);
+  };
 
   return (
     <Container className="mt-4">
       <Row>
-        {/* Left sidebar - categories */}
+        {/* Left sidebar - categories and sorting */}
         <Col md={3}>
           <h5>Categories</h5>
           <ListGroup>
@@ -69,20 +83,18 @@ export default function Home() {
             >
               All
             </ListGroup.Item>
-            {Array.isArray(categories) &&
-              categories.map((cat) => (
-                <ListGroup.Item
-                  key={cat.id}
-                  action
-                  active={selectedCategory === cat.name}
-                  onClick={() => setSelectedCategory(cat.name)}
-                >
-                  {cat.name}
-                </ListGroup.Item>
-              ))}
+            {categories.map(cat => (
+              <ListGroup.Item
+                key={cat.id}
+                action
+                active={selectedCategory === cat.name}
+                onClick={() => setSelectedCategory(cat.name)}
+              >
+                {cat.name}
+              </ListGroup.Item>
+            ))}
           </ListGroup>
 
-          {/* Sorting */}
           <h6 className="mt-4">Sort By</h6>
           <Dropdown>
             <Dropdown.Toggle variant="secondary" id="dropdown-basic">
@@ -103,42 +115,37 @@ export default function Home() {
           </Dropdown>
         </Col>
 
-        {/* Right side - blogs */}
+        {/* Right side - blogs and search */}
         <Col md={9}>
-          {/* Search bar */}
           <Form className="mb-3">
             <Form.Control
               type="text"
               placeholder="Search blogs..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={handleSearchChange}
             />
           </Form>
 
           <Row>
             {blogs.length === 0 && <p>No blogs available!</p>}
-            {Array.isArray(blogs) &&
-              blogs.map((blog) => (
-                <Col md={12} key={blog.id} className="mb-3">
-                  <Card>
-                    <Card.Body>
-                      <Card.Title>{blog.title}</Card.Title>
-                      <Card.Subtitle className="mb-2 text-muted">
-                        {blog.category?.name || "No category"} | By {blog.author?.username || "Unknown"}
-                      </Card.Subtitle>
-                      <div>
-                        Likes: {blog.stats?.likes || 0} | Shares: {blog.stats?.shares || 0}
-                      </div>
-                      <Button
-                        className="mt-2"
-                        onClick={() => navigate(`/blogs/${blog.id}`)}
-                      >
-                        Read More
-                      </Button>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              ))}
+            {blogs.map(blog => (
+              <Col md={12} key={blog.id} className="mb-3">
+                <Card>
+                  <Card.Body>
+                    <Card.Title>{blog.title}</Card.Title>
+                    <Card.Subtitle className="mb-2 text-muted">
+                      {blog.category?.name || "No category"} | By {blog.author?.username || "Unknown"}
+                    </Card.Subtitle>
+                    <div>
+                      Likes: {blog.stats?.likes || 0} | Shares: {blog.stats?.shares || 0}
+                    </div>
+                    <Button className="mt-2" onClick={() => navigate(`/blogs/${blog.id}`)}>
+                      Read More
+                    </Button>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
           </Row>
         </Col>
       </Row>

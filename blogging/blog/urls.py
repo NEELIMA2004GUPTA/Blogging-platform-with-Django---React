@@ -1,15 +1,15 @@
 from django.urls import path
-from .views import register, logout, me, MyTokenObtainPairView, blogs_list_create, blog_detail, password_reset_request, password_reset_confirm, categories_list_create,category_detail,blog_comments,comment_detail, blog_like,blog_share,admin_stats, upload_profile_picture
+from .views import register, logout, me, login_view, blogs_list_create, blog_detail, password_reset_request, password_reset_confirm, categories_list_create,category_detail,blog_comments,comment_detail, blog_like,blog_share,admin_stats, upload_profile_picture
 from rest_framework_simplejwt.views import TokenRefreshView
 
 
 urlpatterns = [
     path('auth/register/', register, name='register'),
-    path('auth/login/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/login/', login_view, name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/logout/', logout, name='logout'),
     path('auth/me/', me, name='current_user'),
-     path('auth/reset-password/', password_reset_request, name='password_reset'),
+    path('auth/reset-password/', password_reset_request, name='password_reset'),
     path('auth/reset-password-confirm/<uid>/<token>/', password_reset_confirm, name='password_reset_confirm'),
 
     path('blogs/', blogs_list_create, name='blogs-list-create'),

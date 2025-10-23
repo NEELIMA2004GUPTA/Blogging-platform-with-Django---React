@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Container, Card, Button, Form, ListGroup, Image } from "react-bootstrap";
 import { toast } from "react-toastify";
 import API from "../api/axios";
 
 export default function BlogDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const token = localStorage.getItem("access");
 
   const [blog, setBlog] = useState(null);
@@ -45,46 +46,33 @@ export default function BlogDetail() {
 
   // Like blog
   const handleLike = async (blogId) => {
-  try {
-    const res = await API.post(
-      `/blogs/${blogId}/like/`,
-      {},
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-
-    // Update frontend instantly
-    setBlog((prevBlog) => ({
-      ...prevBlog,
-      stats: {
-        ...prevBlog.stats,
-        likes: res.data.likes, 
-      },
-      liked: true, 
-    }));
-
-    toast.success("You liked this blog!");
-  } catch (err) {
-    if (err.response?.status === 400) {
-      toast.info(err.response.data.detail);
-    } else if (err.response?.status === 403) {
-      toast.warn(err.response.data.detail || "You cannot like your own blog");
-    } else {
-      toast.error("Something went wrong while liking");
-    }
-  }
-};
-
-  // Share blog
-  const handleShare = async () => {
-    if (!token) return toast.error("Login to share!");
+    if (!token) return toast.info("Please login to like posts!");
     try {
-      await API.post(
-        `/blogs/${id}/share/`,
+      const res = await API.post(
+        `/blogs/${blogId}/like/`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
+      setBlog((prevBlog) => ({
+        ...prevBlog,
+        stats: { ...prevBlog.stats, likes: res.data.likes },
+        liked: true,
+      }));
+
+      toast.success("You liked this blog!");
+    } catch (err) {
+      if (err.response?.status === 400) toast.info(err.response.data.detail);
+      else if (err.response?.status === 403) toast.warn("You cannot like your own blog");
+      else toast.error("Something went wrong while liking");
+    }
+  };
+
+  // Share blog
+  const handleShare = async () => {
+    if (!token) return toast.info("Please login to share!");
+    try {
+      await API.post(`/blogs/${id}/share/`, {}, { headers: { Authorization: `Bearer ${token}` } });
       await fetchBlog();
       toast.success("Shared!");
     } catch (err) {
@@ -96,8 +84,8 @@ export default function BlogDetail() {
   // Post comment
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
-    if (!token) return toast.error("Login to comment!");
-    if (!newComment.trim()) return toast.error("Cannot post empty comment");
+    if (!token) return toast.info("Please login to comment!");
+    if (!newComment.trim()) return toast.warning("Comment cannot be empty!");
 
     try {
       await API.post(
@@ -117,7 +105,6 @@ export default function BlogDetail() {
 
   if (!blog) return <p>Loading...</p>;
 
-  
   return (
     <Container className="mt-4">
       <Card>
@@ -127,28 +114,47 @@ export default function BlogDetail() {
             {blog.category?.name} | By {blog.author.username}
           </Card.Subtitle>
 
-          {/* Blog Image */}
-          <Image src={blog.image_url || "https://via.placeholder.com/150"} fluid rounded className="mb-3" style={{width: "50%",height: "300px",objectFit: "cover"}} />
+          {blog.image_url && !blog.image_url.includes("via.placeholder.com") && (
+            <Image
+              src={blog.image_url}
+              fluid
+              rounded
+              className="mb-3"
+              style={{ width: "50%", height: "300px", objectFit: "cover" }}
+            />
+          )}
+
 
           <Card.Text>{blog.content}</Card.Text>
 
-          <div className="d-flex gap-3">
+          <div className="d-flex gap-3 mb-2">
             <span>Likes: {blog.stats?.likes || 0}</span>
             <span>Shares: {blog.stats?.shares || 0}</span>
           </div>
-          
+
           <div className="d-flex gap-3">
             <Button
               variant={blog.liked ? "success" : "outline-primary"}
-                disabled={blog.liked}
-                onClick={() => handleLike(blog.id)} 
+              disabled={!token || blog.liked}
+              onClick={() => handleLike(blog.id)}
             >
-            {blog.liked ? "Liked ❤️" : "Like 👍"}
+              {token ? (blog.liked ? "Liked ❤️" : "Like 👍") : "Login to Like"}
             </Button>
-            <Button variant="secondary" onClick={handleShare}>
-              Share
+
+            <Button
+              variant="secondary"
+              disabled={!token}
+              onClick={handleShare}
+            >
+              {token ? "Share" : "Login to Share"}
             </Button>
           </div>
+
+          {!token && (
+            <p className="text-muted mt-2" style={{ fontSize: "0.9rem" }}>
+              Please <span className="text-primary" style={{ cursor: "pointer" }} onClick={() => navigate("/login")}>login</span> to like, comment, or share this post.
+            </p>
+          )}
         </Card.Body>
       </Card>
 
@@ -165,7 +171,7 @@ export default function BlogDetail() {
             ))}
           </ListGroup>
 
-          {token && (
+          {token ? (
             <Form onSubmit={handleCommentSubmit}>
               <Form.Group className="mb-2">
                 <Form.Control
@@ -177,6 +183,17 @@ export default function BlogDetail() {
               </Form.Group>
               <Button type="submit">Post Comment</Button>
             </Form>
+          ) : (
+            <p className="text-muted">
+              Please{" "}
+              <span
+                onClick={() => navigate("/login")}
+                style={{ color: "blue", cursor: "pointer" }}
+              >
+                login
+              </span>{" "}
+              to comment on this post.
+            </p>
           )}
         </Card.Body>
       </Card>

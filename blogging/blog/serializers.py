@@ -2,11 +2,9 @@ from rest_framework import serializers
 from .models import User,Category,Blog,Comment,BlogStats
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from django.contrib.auth import get_user_model, password_validation
+from django.contrib.auth import get_user_model, password_validation, authenticate
 from rest_framework.serializers import ValidationError
 from django.conf import settings
-
-
 
 User=get_user_model()
 
@@ -63,16 +61,33 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
-# ! JWT Token serializer
-class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        token['username'] = user.username
-        token['email'] = user.email
-        token['is_admin'] = user.is_admin
-        return token
+# ! login 
+class LoginSerializer(serializers.Serializer):
+    identifier = serializers.CharField()
+    password = serializers.CharField(write_only=True)
 
+    def validate(self, attrs):
+        identifier = attrs.get('identifier')
+        password = attrs.get('password')
+
+        if identifier and password:
+            # Try to authenticate by username first, then email
+            user = authenticate(username=identifier, password=password)
+            if not user:
+                try:
+                    user_obj = User.objects.get(email=identifier)
+                    user = authenticate(username=user_obj.username, password=password)
+                except User.DoesNotExist:
+                    user = None
+
+            if not user:
+                raise serializers.ValidationError("Invalid credentials", code='authorization')
+        else:
+            raise serializers.ValidationError("Both fields are required", code='authorization')
+
+        attrs['user'] = user
+        return attrs
+    
 # ! Forgot Password 
 class PasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -161,9 +176,7 @@ class BlogSerializer(serializers.ModelSerializer):
         return 0
 
     def get_liked(self, obj):
-        user = self.context['request'].user
-        if not hasattr(obj, 'stats'):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
             return False
-        if user.is_authenticated:
-            return obj.stats.liked_users.filter(id=user.id).exists()
-        return False
+        return False    

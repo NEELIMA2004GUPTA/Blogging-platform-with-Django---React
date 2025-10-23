@@ -24,7 +24,7 @@ from django.db.models.functions import Coalesce
 from .models import User, Blog , Category, Comment, BlogStats
 from django.db.models import Sum
 
-from .serializers import RegisterSerializer, UserSerializer,PasswordResetSerializer, PasswordResetConfirmSerializer, BlogSerializer, CategorySerializer, CommentSerializer, BlogStatsSerializer,MyTokenObtainPairSerializer
+from .serializers import RegisterSerializer, UserSerializer,PasswordResetSerializer, PasswordResetConfirmSerializer, BlogSerializer, CategorySerializer, CommentSerializer, BlogStatsSerializer, LoginSerializer
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -48,25 +48,26 @@ def register(request):
 
 
 #! Login (returns JWT token)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_view(request):
+    serializer = LoginSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    user = serializer.validated_data['user']
 
-class MyTokenObtainPairView(TokenObtainPairView):
-    serializer_class = MyTokenObtainPairSerializer
+    refresh = RefreshToken.for_user(user)
+    return Response({
+        'user': {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'is_admin': user.is_admin,
+        },
+        'access': str(refresh.access_token),
+        'refresh': str(refresh)
+    }, status=status.HTTP_200_OK)
 
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
 
-        # The authenticated user is now in serializer.user
-        user = serializer.user  
-        user_data = UserSerializer(user,context={'request': request}).data
-
-        # Return JWT + user info
-        return Response({
-            "access": serializer.validated_data["access"],
-            "refresh": serializer.validated_data["refresh"],
-            "user": user_data
-        }, status=status.HTTP_200_OK)
-        
 # ! logout 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -238,7 +239,7 @@ def blog_detail(request, blog_id):
             stats.views += 1
             stats.save()
 
-        serializer = BlogSerializer(blog,context={'request': request})
+        serializer = BlogSerializer(blog,context={'request': None})
         data = serializer.data
 
         # Always include public stats

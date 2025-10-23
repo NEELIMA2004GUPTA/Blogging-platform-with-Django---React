@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import API from "../api/axios";
-import { jwtDecode } from "jwt-decode"; 
+import { jwtDecode } from "jwt-decode";
 import {
   Navbar as BootstrapNavbar,
   Nav,
@@ -13,7 +13,6 @@ export default function Navbar() {
   const navigate = useNavigate();
   const token = localStorage.getItem("access");
   const [user, setUser] = useState(null);
-
 
   const fetchUser = useCallback(async () => {
     if (!token) return;
@@ -41,27 +40,42 @@ export default function Navbar() {
   if (token) {
     try {
       const decoded = jwtDecode(token);
-      isAdmin = decoded?.is_admin || decoded?.role === "admin" || decoded?.is_staff;
+      isAdmin =
+        decoded?.is_admin || decoded?.role === "admin" || decoded?.is_staff;
     } catch (err) {
       console.warn("Invalid token:", err);
     }
   }
 
+  // Handle brand click
+  const handleBrandClick = (e) => {
+    e.preventDefault();
+    if (token) {
+      navigate("/home"); // logged in → Home page
+    } else {
+      navigate("/"); // guest → Landing page
+    }
+  };
 
   return (
     <BootstrapNavbar bg="dark" variant="dark" expand="lg">
       <Container>
-        <BootstrapNavbar.Brand as={Link} to="/">
+        <BootstrapNavbar.Brand href="/" onClick={handleBrandClick}>
           Blogging Platform
         </BootstrapNavbar.Brand>
+
         <BootstrapNavbar.Toggle aria-controls="basic-navbar-nav" />
         <BootstrapNavbar.Collapse id="basic-navbar-nav">
           <Nav className="ms-auto">
+            {/* ✅ Home link always visible */}
+            <Nav.Link as={Link} to="/home">
+              Home
+            </Nav.Link>
+
             {token ? (
               <>
-                <Nav.Link as={Link} to="/home">Home</Nav.Link>
                 <Nav.Link as={Link} to="/my-blogs">My Blogs</Nav.Link>
-                <Nav.Link as={Link} to="/create-blog?id">Create Blog</Nav.Link>
+                <Nav.Link as={Link} to="/create-blog">Create Blog</Nav.Link>
 
                 {isAdmin && (
                   <>
@@ -94,7 +108,9 @@ export default function Navbar() {
                   <NavDropdown.Item>Username: {user?.username}</NavDropdown.Item>
                   <NavDropdown.Item>Email: {user?.email}</NavDropdown.Item>
                   <NavDropdown.Divider />
-                  <NavDropdown.Item onClick={handleLogout}>Logout</NavDropdown.Item>
+                  <NavDropdown.Item onClick={handleLogout}>
+                    Logout
+                  </NavDropdown.Item>
                 </NavDropdown>
               </>
             ) : (

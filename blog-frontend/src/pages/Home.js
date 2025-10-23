@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Container, Row, Col, Card, Button, ListGroup, Form, Dropdown } from "react-bootstrap";
+import { Container, Row, Col, Card, Button, ListGroup, Form, Dropdown, Pagination } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import API from "../api/axios";
@@ -11,10 +11,11 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState("newest");
   const [typingTimeout, setTypingTimeout] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const navigate = useNavigate();
 
-  // Fetch categories once
   const fetchCategories = async () => {
     try {
       const res = await API.get("/categories/");
@@ -26,20 +27,34 @@ export default function Home() {
     }
   };
 
-  // Fetch blogs with optional search term
-  const fetchBlogs = useCallback(async (searchTerm = "") => {
+  const fetchBlogs = useCallback(async (page = 1, searchTerm = "") => {
     try {
-      let url = `/blogs/?sort=${sortOrder}`;
+      let url = `/blogs/?sort=${sortOrder}&page=${page}`;
       if (selectedCategory) url += `&category=${selectedCategory}`;
       if (searchTerm) url += `&search=${searchTerm}`;
 
       const res = await API.get(url);
-      const blogsArray = Array.isArray(res.data.blogs) ? res.data.blogs : [];
+      const data = res.data;
+
+      // If backend returns 'results', 'count', 'next', 'previous'
+      const blogsArray = data.results || data.blogs || [];
       const blogsWithStats = blogsArray.map(blog => ({
         ...blog,
         stats: blog.stats || { likes: 0, shares: 0 }
       }));
+
       setBlogs(blogsWithStats);
+
+      // Calculate total pages from backend count and page_size
+      if (data.count && data.page_size) {
+        setTotalPages(Math.ceil(data.count / data.page_size));
+      } else if (data.total_pages) {
+        setTotalPages(data.total_pages);
+      } else {
+        setTotalPages(1);
+      }
+
+      setCurrentPage(page);
     } catch (err) {
       toast.error("Failed to load blogs!");
       console.error(err);
@@ -50,12 +65,10 @@ export default function Home() {
     fetchCategories();
   }, []);
 
-  // Refetch blogs when category or sort order changes
   useEffect(() => {
-    fetchBlogs(searchQuery);
-  }, [fetchBlogs, selectedCategory, sortOrder]);
+    fetchBlogs(currentPage, searchQuery);
+  }, [fetchBlogs, selectedCategory, sortOrder, currentPage]);
 
-  // Debounced search
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchQuery(value);
@@ -63,16 +76,37 @@ export default function Home() {
     if (typingTimeout) clearTimeout(typingTimeout);
 
     const timeout = setTimeout(() => {
-      fetchBlogs(value);
-    }, 500); // 500ms delay
+      setCurrentPage(1); // reset to first page on search
+      fetchBlogs(1, value);
+    }, 500);
 
     setTypingTimeout(timeout);
+  };
+
+  const handlePageClick = (page) => {
+    if (page !== currentPage) setCurrentPage(page);
+  };
+
+  // Render pagination component
+  const renderPagination = () => {
+    const items = [];
+    for (let number = 1; number <= totalPages; number++) {
+      items.push(
+        <Pagination.Item
+          key={number}
+          active={number === currentPage}
+          onClick={() => handlePageClick(number)}
+        >
+          {number}
+        </Pagination.Item>
+      );
+    }
+    return <Pagination>{items}</Pagination>;
   };
 
   return (
     <Container className="mt-4">
       <Row>
-        {/* Left sidebar - categories and sorting */}
         <Col md={3}>
           <h5>Categories</h5>
           <ListGroup>
@@ -115,7 +149,6 @@ export default function Home() {
           </Dropdown>
         </Col>
 
-        {/* Right side - blogs and search */}
         <Col md={9}>
           <Form className="mb-3">
             <Form.Control
@@ -147,6 +180,10 @@ export default function Home() {
               </Col>
             ))}
           </Row>
+
+          <div className="d-flex justify-content-center mt-3">
+            {renderPagination()}
+          </div>
         </Col>
       </Row>
     </Container>

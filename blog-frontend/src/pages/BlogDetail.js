@@ -45,33 +45,36 @@ export default function BlogDetail() {
 
   // Like blog
   const handleLike = async (blogId) => {
-    try {
-      const res = await API.post(
-        `/blogs/${blogId}/like/`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      // Update frontend instantly
-      setBlog((prevBlog) => ({
-        ...prevBlog,
-        likes: res.data.likes,
-        liked: true,
-      }));;
-
-      toast.success("You liked this blog!");
-    } catch (err) {
-      if (err.response?.status === 400) {
-        toast.info(err.response.data.detail);
-      } else if (err.response?.status === 403) {
-        toast.warn(err.response.data.detail || "You cannot like your own blog");
-      } else {
-        toast.error("Something went wrong while liking");
+  try {
+    const res = await API.post(
+      `/blogs/${blogId}/like/`,
+      {},
+      {
+        headers: { Authorization: `Bearer ${token}` },
       }
+    );
+
+    // Update frontend instantly
+    setBlog((prevBlog) => ({
+      ...prevBlog,
+      stats: {
+        ...prevBlog.stats,
+        likes: res.data.likes, 
+      },
+      liked: true, 
+    }));
+
+    toast.success("You liked this blog!");
+  } catch (err) {
+    if (err.response?.status === 400) {
+      toast.info(err.response.data.detail);
+    } else if (err.response?.status === 403) {
+      toast.warn(err.response.data.detail || "You cannot like your own blog");
+    } else {
+      toast.error("Something went wrong while liking");
     }
-  };
+  }
+};
 
   // Share blog
   const handleShare = async () => {
@@ -134,7 +137,7 @@ export default function BlogDetail() {
             <span>Shares: {blog.stats?.shares || 0}</span>
           </div>
           
-          <div className="mt-3">
+          <div className="d-flex gap-3">
             <Button
               variant={blog.liked ? "success" : "outline-primary"}
                 disabled={blog.liked}

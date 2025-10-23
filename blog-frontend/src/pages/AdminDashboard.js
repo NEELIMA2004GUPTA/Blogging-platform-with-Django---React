@@ -27,9 +27,12 @@ export default function AdminDashboard() {
   }, [fetchStats]);
 
   const COLORS = ["#8884d8", "#82ca9d", "#ff6961", "#ffc658", "#8dd1e1"];
-  const topBlogs = (stats.blog_stats || [])
-    .sort((a, b) => b.views - a.views)
-    .slice(0, 5);
+  const topBlogs = (stats.blog_stats || []).map(blog => ({
+  title: blog.title,
+  likes: blog.likes_sum,
+  shares: blog.shares_sum,
+  views: blog.views_sum
+}));
 
   return (
     <Container className="mt-4">

@@ -18,6 +18,7 @@ from django.db import DatabaseError, OperationalError
 from rest_framework.permissions import IsAdminUser
 from django.db.models import Count
 from django.db.models.functions import TruncDay, TruncWeek, TruncMonth, TruncQuarter, TruncYear
+from django.db.models.functions import Coalesce
 
 
 from .models import User, Blog , Category, Comment, BlogStats
@@ -367,17 +368,18 @@ def comment_detail(request, comment_id):
 def blog_like(request, blog_id):
     blog = get_object_or_404(Blog, id=blog_id, deleted_at__isnull=True)
 
+    # Prevent author from liking their own blog
     if request.user == blog.author:
         return Response({'detail': "Authors cannot like their own blog"}, status=403)
 
     stats, _ = BlogStats.objects.get_or_create(blog=blog)
 
-   
+    
     if stats.liked_users.filter(id=request.user.id).exists():
         return Response({'detail': "You have already liked this blog."}, status=400)
 
     stats.likes += 1
-    stats.liked_users.add(request.user)
+    stats.liked_users.add(request.user)  
     stats.save()
 
     return Response({'likes': stats.likes, 'liked': True}, status=200)
@@ -402,7 +404,7 @@ RANGE_CHOICES = {
     "weekly": TruncWeek,
     "monthly": TruncMonth,
     "quarterly": TruncQuarter,
-    "yearly": TruncYear
+    "yearly": TruncYear,
 }
 
 @api_view(['GET'])
@@ -411,48 +413,53 @@ def admin_stats(request):
     range_type = request.GET.get("range", "monthly")
     truncate_func = RANGE_CHOICES.get(range_type, TruncMonth)
 
-    # Total counts
+
+    total_views = BlogStats.objects.aggregate(total=Coalesce(Sum('views'), 0))['total']
+    total_likes = BlogStats.objects.aggregate(total=Coalesce(Sum('likes'), 0))['total']
+    total_shares = BlogStats.objects.aggregate(total=Coalesce(Sum('shares'), 0))['total']
+
     total_users = User.objects.count()
     total_blogs = Blog.objects.count()
-    total_views = BlogStats.objects.aggregate(total=Sum('views'))['total'] or 0
-    total_likes = BlogStats.objects.aggregate(total=Sum('likes'))['total'] or 0
-    total_shares = BlogStats.objects.aggregate(total=Sum('shares'))['total'] or 0
 
-    # Users by range, filter out null date_joined
-    users_qs = User.objects.filter(date_joined__isnull=False)\
-                           .annotate(period=truncate_func('date_joined'))\
-                           .values('period')\
-                           .annotate(count=Count('id'))\
-                           .order_by('period')
+    
+    users_qs = (
+        User.objects.filter(date_joined__isnull=False)
+        .annotate(period=truncate_func('date_joined'))
+        .values('period')
+        .annotate(count=Count('id'))
+        .order_by('period')
+    )
     users_by_range = [
         {"period": u["period"].strftime("%Y-%m-%d"), "count": u["count"]}
-        for u in users_qs
+        for u in users_qs if u["period"] is not None
     ]
 
-    # Blogs by range, filter out null publish_at
-    blogs_qs = Blog.objects.filter(publish_at__isnull=False)\
-                           .annotate(period=truncate_func('publish_at'))\
-                           .values('period')\
-                           .annotate(count=Count('id'))\
-                           .order_by('period')
+    # Blogs by range
+    blogs_qs = (
+        Blog.objects.filter(publish_at__isnull=False)
+        .annotate(period=truncate_func('publish_at'))
+        .values('period')
+        .annotate(count=Count('id'))
+        .order_by('period')
+    )
     blogs_by_range = [
         {"period": b["period"].strftime("%Y-%m-%d"), "count": b["count"]}
-        for b in blogs_qs
+        for b in blogs_qs if b["period"] is not None
     ]
 
-    # Likes & Shares & Views by category
+    # Category stats (use Coalesce in annotation)
     category_stats = Category.objects.annotate(
-        total_likes=Sum('blogs__stats__likes'),
-        total_shares=Sum('blogs__stats__shares'),
-        total_views=Sum('blogs__stats__views')
+        total_likes=Coalesce(Sum('blogs__stats__likes'), 0),
+        total_shares=Coalesce(Sum('blogs__stats__shares'), 0),
+        total_views=Coalesce(Sum('blogs__stats__views'), 0),
     ).values('name', 'total_likes', 'total_shares', 'total_views')
 
-    # Blog-wise stats
-    blog_stats = Blog.objects.annotate(
-        likes=Sum('stats__likes'),
-        shares=Sum('stats__shares'),
-        views=Sum('stats__views')
-    ).values('title', 'likes', 'shares', 'views')
+    # Top 5 Blogs by views
+    blog_stats_qs = Blog.objects.annotate(
+    likes_sum=Coalesce(Sum('stats__likes'), 0),
+    shares_sum=Coalesce(Sum('stats__shares'), 0),
+    views_sum=Coalesce(Sum('stats__views'), 0),
+).order_by('-views_sum')[:5].values('title', 'likes_sum', 'shares_sum', 'views_sum')
 
     data = {
         "total_users": total_users,
@@ -463,7 +470,9 @@ def admin_stats(request):
         "users_by_range": users_by_range,
         "blogs_by_range": blogs_by_range,
         "category_stats": list(category_stats),
-        "blog_stats": list(blog_stats)
+        "blog_stats": list(blog_stats_qs),
     }
 
     return Response(data)
+
+

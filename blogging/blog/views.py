@@ -348,9 +348,9 @@ def blog_comments(request, blog_id):
 # ! Delete comment (soft delete)
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
-def comment_detail(request, pk):
+def comment_detail(request, comment_id):
     try:
-        comment = Comment.objects.get(pk=pk)
+        comment = Comment.objects.get(pk=comment_id)
     except Comment.DoesNotExist:
         return Response({"detail": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
 

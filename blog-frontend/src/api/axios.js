@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: 'https://omar-heady-paulina.ngrok-free.dev/api',
+  baseURL: 'https://omar-heady-paulina.ngrok-free.dev/api',           
 });
 
 // Add token automatically if stored

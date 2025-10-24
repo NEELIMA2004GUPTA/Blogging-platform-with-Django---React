@@ -239,7 +239,7 @@ def blog_detail(request, blog_id):
             stats.views += 1
             stats.save()
 
-        serializer = BlogSerializer(blog,context={'request': None})
+        serializer = BlogSerializer(blog,context={'request': request})
         data = serializer.data
 
         # Always include public stats
@@ -346,22 +346,24 @@ def blog_comments(request, blog_id):
 
 
 # ! Delete comment (soft delete)
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def comment_detail(request, pk):
+    try:
+        comment = Comment.objects.get(pk=pk)
+    except Comment.DoesNotExist:
+        return Response({"detail": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
 
-@api_view(['GET', 'DELETE'])
-def comment_detail(request, comment_id):
-    comment = get_object_or_404(Comment, id=comment_id, deleted_at__isnull=True)
-
-    if request.method == 'GET':
-        serializer = CommentSerializer(comment)
-        return Response(serializer.data)
-
-    elif request.method == 'DELETE':
-        # Only author or admin can delete
-        if not request.user.is_authenticated or (request.user != comment.author and not request.user.is_admin):
-            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
-
-        comment.soft_delete()
-        return Response({'detail': 'Comment deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+    # Allow only comment author, blog author, or admin
+    if (
+        request.user == comment.author or
+        request.user == comment.blog.author or
+        request.user.is_staff
+    ):
+        comment.delete()
+        return Response({"detail": "Comment deleted"}, status=status.HTTP_204_NO_CONTENT)
+    else:
+        return Response({"detail": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
 
 # ! Likes   
 @api_view(['POST'])

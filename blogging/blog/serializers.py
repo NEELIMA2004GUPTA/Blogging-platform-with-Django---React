@@ -135,10 +135,12 @@ class BlogSerializer(serializers.ModelSerializer):
     image_url= serializers.SerializerMethodField()
     image = serializers.ImageField(required=False, allow_null=True)
     liked = serializers.SerializerMethodField()
+    current_user = serializers.SerializerMethodField()
+    is_admin = serializers.SerializerMethodField()
     
     class Meta:
         model = Blog
-        fields = ['id', 'title', 'content', 'author', 'category', 'category_name','image_url','image','liked','likes',"is_published","publish_at","created_at","deleted_at","updated_at","stats","comments"]
+        fields = ['id', 'title', 'content', 'author', 'category', 'category_name','image_url','image','liked','likes',"is_published","publish_at","created_at","deleted_at","updated_at","stats","comments",'current_user', 'is_admin']
         read_only_fields = ['author', 'category',"created_at","deleted_at","updated_at"]
 
     def validate_category_name(self, value):
@@ -179,4 +181,16 @@ class BlogSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             return False
-        return False    
+        return False  
+
+    def get_current_user(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return request.user.username
+        return None
+
+    def get_is_admin(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return request.user.is_staff
+        return False  

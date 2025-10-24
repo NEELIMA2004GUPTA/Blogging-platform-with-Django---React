@@ -19,7 +19,7 @@ urlpatterns = [
     path('categories/<int:category_id>/', category_detail, name='category-detail'),
 
     path('blogs/<int:blog_id>/comments/', blog_comments, name='blog-comments'),
-    path('comments/<int:comment_id>/', comment_detail, name='comment-detail'),
+    path('blogs/comments/<int:comment_id>/delete/', comment_detail, name='comment-detail'),
 
     path('blogs/<int:blog_id>/like/', blog_like, name='blog-like'),
     path('blogs/<int:blog_id>/share/', blog_share, name='blog-share'),

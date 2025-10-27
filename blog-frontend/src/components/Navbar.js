@@ -1,4 +1,3 @@
-// src/components/Navbar.js
 import React, { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import API from "../api/axios";

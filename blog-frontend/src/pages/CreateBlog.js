@@ -77,7 +77,7 @@ export default function CreateBlog() {
     const formData = new FormData();
     formData.append("title", title);
     formData.append("category_name", category);
-    formData.append("content", content); // include content
+    formData.append("content", content);
     if (image) formData.append("image", image);
     if (publishAt) formData.append("publish_at", publishAt);
 

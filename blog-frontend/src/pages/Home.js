@@ -36,7 +36,6 @@ export default function Home() {
       const res = await API.get(url);
       const data = res.data;
 
-      // If backend returns 'results', 'count', 'next', 'previous'
       const blogsArray = data.results || data.blogs || [];
       const blogsWithStats = blogsArray.map(blog => ({
         ...blog,

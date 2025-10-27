@@ -8,7 +8,7 @@ export default function CreateBlog() {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [categories, setCategories] = useState([]);
-  const [content, setContent] = useState(""); // content field kept
+  const [content, setContent] = useState(""); 
   const [image, setImage] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [publishAt, setPublishAt] = useState("");

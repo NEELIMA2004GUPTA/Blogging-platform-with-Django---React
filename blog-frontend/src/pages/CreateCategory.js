@@ -12,8 +12,7 @@ export default function CategoryManagement() {
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
   const [editingId, setEditingId] = useState(null);
-
-  const [user, setUser] = useState(null);
+  const [, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -55,7 +54,6 @@ export default function CategoryManagement() {
     fetchCategories();
   }, [token, isAdmin]);
 
-  // While fetching user info
   if (loading) return null;
 
   // Redirect if not logged in
@@ -74,7 +72,7 @@ export default function CategoryManagement() {
     );
   }
 
-  // Handle form submit (create or edit)
+  // Handle form submit (create / update)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage(null);
@@ -83,7 +81,6 @@ export default function CategoryManagement() {
     try {
       let res;
       if (editingId) {
-        // Update existing category
         res = await API.put(
           `/categories/${editingId}/`,
           { name, description },
@@ -94,7 +91,6 @@ export default function CategoryManagement() {
         );
         setMessage(`Category "${res.data.name}" updated successfully.`);
       } else {
-        // Create new category
         res = await API.post(
           "/categories/",
           { name, description },
@@ -103,6 +99,7 @@ export default function CategoryManagement() {
         setCategories((prev) => [...prev, res.data]);
         setMessage(`Category "${res.data.name}" created successfully.`);
       }
+
       setName("");
       setDescription("");
       setEditingId(null);
@@ -167,6 +164,7 @@ export default function CategoryManagement() {
             required
           />
         </div>
+
         <div className="form-group mb-3">
           <label>Description (optional)</label>
           <textarea
@@ -176,12 +174,13 @@ export default function CategoryManagement() {
             onChange={(e) => setDescription(e.target.value)}
           ></textarea>
         </div>
+
         <button type="submit" className="btn btn-primary w-100">
           {editingId ? "Update Category" : "Create Category"}
         </button>
       </form>
 
-      {/* Category list */}
+      {/* Category List */}
       <div className="mt-5">
         <h4>Existing Categories</h4>
         <table className="table table-bordered mt-3">
@@ -192,6 +191,7 @@ export default function CategoryManagement() {
               <th>Actions</th>
             </tr>
           </thead>
+
           <tbody>
             {categories.length > 0 ? (
               categories.map((cat) => (
@@ -222,6 +222,7 @@ export default function CategoryManagement() {
               </tr>
             )}
           </tbody>
+
         </table>
       </div>
     </div>

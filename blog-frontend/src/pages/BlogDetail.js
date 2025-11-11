@@ -129,11 +129,9 @@ export default function BlogDetail() {
           </Card.Subtitle>
 
           {blog.image_url && !blog.image_url.includes("via.placeholder.com") && (
-            <Image
-              src={blog.image_url}
-              fluid
-              rounded
-              className="mb-3"
+            <img
+              src={blog.image}
+              className="img-fluid rounded"
               style={{ width: "50%", height: "300px", objectFit: "cover" }}
             />
           )}

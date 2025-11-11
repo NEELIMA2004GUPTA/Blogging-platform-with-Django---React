@@ -70,7 +70,7 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://192.168.1.100:3000",
     "http://localhost:3000",
-    "https://omar-heady-paulina.ngrok-free.dev",
+
 ]
 
 CSRF_TRUSTED_ORIGINS = [
